@@ -1,0 +1,15 @@
+{
+	"_user_comment": "No uname or pass required, can be inputted at start",
+	"user": [
+		"username": "john",
+		"password": "pass"
+	],
+	"search results max": [
+		"track": 10,
+		"artist": 5,
+		"album": 5,
+		"playlist": 5
+	],
+	"quality": "high"
+
+}
