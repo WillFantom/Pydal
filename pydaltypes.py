@@ -9,7 +9,7 @@ class SongState:
     stopped = "STOPPED"
 
 class Song:
-    def __init__(self, quality, url, end_call, error_print, crossfade, track):
+    def __init__(self, quality, url, end_call, error_print, track):
         self.track = track
         self.album = track.album
         self.artist = track.artist
@@ -22,46 +22,17 @@ class Song:
             self.media_protocol_ext = "rtmp://"
         self.media = vlc.MediaPlayer(self.media_protocol_ext + url)
 
-        self.time_remaining = (track.duration * 10) - crossfade
-        self.end_call = end_call
-        self.timer = threading.Thread(target=self._timer)
-        self.timing = False
-        self.timer_active = False
-
     def play(self):
-        try:
-            self.media.play()
-            if self.timer.isAlive() == False:
-                self.timer_active = True
-                self.timing = True
-                self.timer.start()
-            self.state = SongState.playing
-        except:
-            self.error_print("Song " + self.track.name + " could not be played", exit=False)
-            self.end_call()
+        self.media.play()
+        self.state = SongState.playing
 
     def pause(self):
-        try:
-            self.media.pause()
-            self.timing = False
-            self.state = SongState.paused
-        except:
-            self.error_print("Song " + self.track.name + " could not be paused", exit=True)
+        self.media.pause()
+        self.state = SongState.paused
 
     def stop(self):
-        if self.state == SongState.playing or self.state == SongState.paused:
-            self.media.stop()
-        self.timer_active = False
-        self.timing = False
+        self.media.stop()
         self.state = SongState.stopped
-
-    def _timer(self):
-        while self.timer_active == True:
-            while self.time_remaining > 0:
-                if self.timing == True:
-                    time.sleep(0.1)
-                    self.time_remaining -= 1
-            self.end_call()
 
     def get_track(self):
         return str(self.track.name)
@@ -80,9 +51,44 @@ class Song:
         return "|" + ("#" * int((percent/5))) + ("-" * int((20-(percent/5)))) + "|"
 
 
+class SongTimer:
+    def __init__(self, duration, next_track_call):
+        self.factor = 10
+        self.duration = duration * self.factor
+        self.remaining = self.duration
+        self.next_track_call = next_track_call
+        self.active = False
+
+        self.thread = threading.Thread(target=self._counter)
+        self.thread.start()
+
+    def reset(self):
+        self.remaining = self.duration
+        self.active = False
+
+    def start(self):
+        self.active = True
+
+    def stop(self):
+        self.active = False
+
+    def get_remaining(self):
+        return self.remaining / self.factor
+
+    def _counter(self):
+        while True:
+            if self.active:
+                if self.remaining <= 0:
+                    self.next_track_call()
+                self.remaining -= 1
+                time.sleep(float(1/self.factor))
+
+
 class Queue:
-    def __init__(self):
+    def __init__(self, cross):
         self.now_playing = None
+        self.now_playing_timer = None
+        self.timer_cross = cross
         self.previous = []
         self.next = []
 
@@ -102,6 +108,9 @@ class Queue:
             self.previous.append(self.now_playing)
         if self.has_next():
             self.now_playing = self.next.pop(0)
+            self.now_playing_timer = SongTimer(self.now_playing.track.duration - self.timer_cross, self.set_next)
+        else:
+            self.now_playing = None
 
     def has_previous(self):
         if len(self.previous) > 0:
@@ -115,13 +124,13 @@ class Queue:
 
     def set_previous(self):
         if self.now_playing != None:
-            if self.now_playing.get_state() == SongState.stopped:
-                self.now_playing.play()
-            else:
-                self.now_playing.stop()
-                self.next = [self.now_playing] + self.next
-            if self.has_previous():
-                self.now_playing = self.previous.pop()
+            self.now_playing.stop()
+            self.next = [self.now_playing] + self.next
+        if self.has_previous():
+            self.now_playing = self.previous.pop()
+            self.now_playing_timer = SongTimer(self.now_playing.track.duration - self.timer_cross, self.set_next)
+        else:
+            self.now_playing = None
 
     def add(self, list):
         self.next += list
@@ -136,6 +145,26 @@ class Queue:
             return self.now_playing
         else:
             return None
+
+    def play_now(self):
+        if self.now_playing.get_state() == SongState.paused:
+            self.now_playing_timer.start()
+        elif self.now_playing.get_state() == SongState.stopped:
+            self.now_playing_timer.reset()
+            self.now_playing_timer.start()
+        self.now_playing.play()
+    
+    def pause_now(self):
+        self.now_playing_timer.stop()
+        self.now_playing.pause()
+
+    def stop_now(self):
+        self.now_playing_timer.stop()
+        self.now_playing.stop()
+
+    def get_now_progressbar(self):
+        percent = int(((self.now_playing.track.duration - (self.now_playing_timer.get_remaining())) / self.now_playing.track.duration) * 100)
+        return "|" + ("#" * int((percent/5))) + ("-" * int((20-(percent/5)))) + "|"
 
     def dump(self, json_file):
         try:

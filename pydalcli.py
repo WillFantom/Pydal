@@ -9,7 +9,10 @@ class PydalCli(PydalUI):
     def __init__(self, player):
         self.player = player
         self.title = "||  PYDAL  ||  a TIDAL player for linux"
+        self.ul = "---------------------------------------"
         print(self.title)
+        print(self.ul)
+
 
     def alert(self, message):
         print("|> " + message + " <|")
@@ -26,7 +29,7 @@ class PydalCli(PydalUI):
             album = self.player.get_now().get_album()
             artist = self.player.get_now().get_artist()
             state = self.player.get_now().get_state()
-            progress = self.player.get_now().get_progressbar()
+            progress = self.player.queue.get_now_progressbar()
             print("|> Track: " + track)
             print("|> Artist: " + artist)
             print("|> Album: " + album)

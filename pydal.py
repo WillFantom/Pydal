@@ -23,7 +23,7 @@ class Pydal:
         self.session = self.create_session()
 
         #Create song list
-        self.queue = Queue()
+        self.queue = Queue(self.settings.get("crossfade"))
 
         #Run Pydal UI loop
         self.ui.run()
@@ -33,34 +33,35 @@ class Pydal:
             self.next()
         else:
             if self.queue.get_now().get_state() == SongState.playing:
-                self.queue.get_now().pause()
+                self.queue.pause_now()
                 self.ui.paused()
-            elif self.queue.get_now().get_state() == SongState.paused or self.queue.get_now().get_state() == SongState.stopped:
-                self.queue.get_now().play()
+            elif self.queue.get_now().get_state() == SongState.paused:
+                self.queue.play_now()
+                self.ui.playing()
+            elif self.queue.get_now().get_state() == SongState.stopped:
+                self.queue.play_now()
                 self.ui.playing()
 
     def stop(self):
         if self.queue.get_now() != None:
-            self.queue.get_now().stop()
+            self.queue.stop_now()
             self.ui.stopped()
 
     def next(self):
-        if self.queue.has_next():
-            self.queue.set_next()
-            self.queue.get_now().play()
-            self.ui.playing()
-        else:
+        self.queue.set_next()
+        if self.queue.get_now() == None:
             self.ui.alert("Queue Empty")
-            if self.queue.get_now() != None:
-                self.queue.get_now().stop()
+        else:
+            self.queue.play_now()
+            self.ui.playing()
 
     def previous(self):
-        if self.queue.has_previous():
-            self.queue.set_previous()
-            self.queue.get_now().play()
-            self.ui.playing()
-        else:
+        self.queue.set_previous()
+        if self.queue.get_now() == None:
             self.ui.alert("History Empty")
+        else:
+            self.queue.play_now()
+            self.ui.playing()
 
     def search(self, field, term):
         search = Search(self.ui, self.session, self.settings.get("max_results"), term, field)
@@ -68,7 +69,7 @@ class Pydal:
             selection = search.get_selection()
             to_add = []
             for item in selection:
-                to_add.append(Song(self.settings.get("quality"), self.session.get_media_url(item.id), self.next, self.ui.error, self.settings.get("crossfade"), item))
+                to_add.append(Song(self.settings.get("quality"), self.session.get_media_url(item.id), self.next, self.ui.error, item))
             self.queue.add(to_add)
             self.ui.alert("Added " + str(len(to_add)) + " Items to the Queue")
             if self.queue.get_now() == None:
@@ -82,10 +83,10 @@ class Pydal:
         session = tdl.Session(session_config)
         try:
             session.login(self.settings.get_username(self.ui.uname_input, self.ui.yesno_prompt), self.settings.get_password(self.ui.pass_input, self.ui.yesno_prompt))
+            if session.check_login() == False:
+                self.ui.error("Invalid Login Credentials", exit=True)
         except:
             self.ui.error("Error Creating Login Session", exit=True)
-        if session.check_login() == False:
-            self.ui.error("Invalid Login Credentials", exit=True)
         return session
 
     def get_now(self):
