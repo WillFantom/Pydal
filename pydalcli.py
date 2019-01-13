@@ -20,7 +20,7 @@ class PydalCli(PydalUI):
             exit()
 
     def current(self):
-        print(" -- Now Playing -- ")
+        print("| -- Now Playing -- ")
         if self.player.get_now() != None:
             track = self.player.get_now().get_track()
             album = self.player.get_now().get_album()
@@ -31,8 +31,7 @@ class PydalCli(PydalUI):
             print("|> Artist: " + artist)
             print("|> Album: " + album)
             print("|> State: " + state)
-            print("|> Progress:")
-            print(" \\" + progress)
+            print("|> Progress <" + progress + ">")
         else:
             print("|> NOTHING")
         print()
@@ -45,6 +44,9 @@ class PydalCli(PydalUI):
 
     def stopped(self):
         self.current()
+
+    def view_queue(self, distace, history=False):
+        raise NotImplementedError("Implement Me") #TODO
 
     def pass_input(self):
         return str(getpass.getpass("|>> Enter your TIDAL password >> "))

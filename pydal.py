@@ -64,14 +64,17 @@ class Pydal:
 
     def search(self, field, term):
         search = Search(self.ui, self.session, self.settings.get("max_results"), term, field)
-        selection = search.get_selection()
-        to_add = []
-        for item in selection:
-            to_add.append(Song(self.settings.get("quality"), self.session.get_media_url(item.id), self.next, self.ui.error, self.settings.get("crossfade"), item))
-        self.queue.add(to_add)
-        self.ui.alert("Added " + str(len(to_add)) + " Items to the Queue")
-        if self.queue.get_now() == None:
-            self.next()
+        if search.is_valid():
+            selection = search.get_selection()
+            to_add = []
+            for item in selection:
+                to_add.append(Song(self.settings.get("quality"), self.session.get_media_url(item.id), self.next, self.ui.error, self.settings.get("crossfade"), item))
+            self.queue.add(to_add)
+            self.ui.alert("Added " + str(len(to_add)) + " Items to the Queue")
+            if self.queue.get_now() == None:
+                self.next()
+        else:
+            self.ui.help()
 
     def create_session(self):
         self.settings.validate()

@@ -9,10 +9,15 @@ class Search:
         self.session = session
         self.max_results = max_results
         self.results = []
+        self.valid = True
         if self.field not in fields:
             ui.error("Invalid Search Field")
+            self.valid = False
         else:
             self._search()
+
+    def is_valid(self):
+        return self.valid
 
     def _search(self):
         search_results = self.session.search(self.field, self.term)
@@ -41,7 +46,12 @@ class Search:
         formatted = []
         idx = 1
         for result in self.results:
-            formatted.append({"name" : str(idx) + " | " + result.name })
+            if self.field == "track" or self.field == "album":
+                formatted.append({"name" : str(idx) + " | " + result.name + " | " + result.artist.name})
+            elif self.field == "playlist":
+                formatted.append({"name" : str(idx) + " | " + result.name + " | " + result.creator})
+            else:
+                formatted.append({"name" : str(idx) + " | " + result.name})
             idx += 1
         tracks = []
         if len(self.results) > 0:

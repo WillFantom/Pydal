@@ -17,13 +17,13 @@ class PydalUI():
     def stopped(self):
         raise NotImplementedError("Implement Me")
 
+    def view_queue(self, distace, history=False):
+        raise NotImplementedError("Implement Me")
+
     def pass_input(self):
         raise NotImplementedError("Implement Me")
 
     def uname_input(self):
-        raise NotImplementedError("Implement Me")
-
-    def search(self, field, term):
         raise NotImplementedError("Implement Me")
 
     def search_prompt(self, field, formatted_list):
