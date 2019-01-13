@@ -1,15 +1,9 @@
 {
-	"_user_comment": "No uname or pass required, can be inputted at start",
-	"user": [
-		"username": "john",
-		"password": "pass"
-	],
-	"search results max": [
-		"track": 10,
-		"artist": 5,
-		"album": 5,
-		"playlist": 5
-	],
-	"quality": "high"
-
+	"username": "w.fantom@lancs.ac.uk",
+	"search_tracks": 5,
+	"search_artists": 2,
+	"search_albums": 2,
+	"search_playlists": 2,
+	"quality": "HIGH",
+	"protocol": "rtmp"
 }
