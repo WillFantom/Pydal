@@ -43,18 +43,18 @@ class Search:
         for result in self.results:
             formatted.append({"name" : str(idx) + " | " + result.name })
             idx += 1
-        selection = self.ui.search_prompt(self.field, formatted)
         tracks = []
-        for item in selection['results']:
-            if self.field == "track":
-                tracks.append(self.results[int(item.split()[0]) - 1])
-            if self.field == "album":
-                tracks += self.session.get_album_tracks(self.results[int(item.split()[0]) - 1].id)
-            if self.field == "artist":
-                tracks += self.session.get_artist_top_tracks(self.results[int(item.split()[0]) - 1].id)
-            if self.field == "playlist":
-                tracks += self.session.get_playlist_tracks(self.results[int(item.split()[0]) - 1].id)
-
+        if len(self.results) > 0:
+            selection = self.ui.search_prompt(self.field, formatted)
+            for item in selection['results']:
+                if self.field == "track":
+                    tracks.append(self.results[int(item.split()[0]) - 1])
+                if self.field == "album":
+                    tracks += self.session.get_album_tracks(self.results[int(item.split()[0]) - 1].id)
+                if self.field == "artist":
+                    tracks += self.session.get_artist_top_tracks(self.results[int(item.split()[0]) - 1].id)
+                if self.field == "playlist":
+                    tracks += self.session.get_playlist_tracks(self.results[int(item.split()[0]) - 1].id)
         return tracks
 
 

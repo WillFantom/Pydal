@@ -52,6 +52,7 @@ class Song:
         if self.state == SongState.playing or self.state == SongState.paused:
             self.media.stop()
         self.timer_active = False
+        self.timing = False
         self.state = SongState.stopped
 
     def _timer(self):

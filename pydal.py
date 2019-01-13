@@ -97,7 +97,7 @@ class Pydal:
         self.queue.dump("data")
         self.session = None
         self.ui.exit()
-        exit()
+        exit(-1)
 
 
 class Settings:
