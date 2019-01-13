@@ -6,6 +6,7 @@ from pydalcli import PydalCli
 from pydalweb import PydalWeb
 from pydaltypes import Song, Queue, SongState
 from pydalsearch import Search
+from pydaltimer import PydalTimer
 
 class Pydal:
     def __init__(self):
@@ -23,7 +24,10 @@ class Pydal:
         self.session = self.create_session()
 
         #Create song list
-        self.queue = Queue(self.settings.get("crossfade"))
+        self.queue = Queue()
+
+        #Create Song Timer (that call next song when done)
+        self.timer = PydalTimer(self.next)
 
         #Run Pydal UI loop
         self.ui.run()
@@ -33,34 +37,50 @@ class Pydal:
             self.next()
         else:
             if self.queue.get_now().get_state() == SongState.playing:
-                self.queue.pause_now()
+                self.queue.get_now().pause()
+                self.timer.stop()
                 self.ui.paused()
             elif self.queue.get_now().get_state() == SongState.paused:
-                self.queue.play_now()
+                self.queue.get_now().play()
+                self.timer.start()
                 self.ui.playing()
             elif self.queue.get_now().get_state() == SongState.stopped:
-                self.queue.play_now()
+                self.queue.get_now().play()
+                self.timer.set(self.queue.get_now().get_duration(), start=True)
                 self.ui.playing()
 
     def stop(self):
         if self.queue.get_now() != None:
-            self.queue.stop_now()
+            self.queue.get_now().stop()
+            self.timer.stop()
             self.ui.stopped()
 
     def next(self):
+        if self.queue.get_now() != None:
+            self.queue.get_now().stop()
+            self.timer.stop()
+
         self.queue.set_next()
+
         if self.queue.get_now() == None:
             self.ui.alert("Queue Empty")
         else:
-            self.queue.play_now()
+            self.queue.get_now().play()
+            self.timer.set(self.queue.get_now().get_duration(), start=True)
             self.ui.playing()
 
     def previous(self):
+        if self.queue.get_now() != None:
+            self.queue.get_now().stop()
+            self.timer.stop()
+
         self.queue.set_previous()
+
         if self.queue.get_now() == None:
             self.ui.alert("History Empty")
         else:
-            self.queue.play_now()
+            self.queue.get_now().play()
+            self.timer.set(self.queue.get_now().get_duration(), start=True)
             self.ui.playing()
 
     def search(self, field, term):
@@ -91,6 +111,9 @@ class Pydal:
 
     def get_now(self):
         return self.queue.get_now()
+
+    def get_progress(self):
+        return self.timer.get_progress()
 
     def get_queue(self):
         return self.queue.get_next(self.settings.get("queue_lookahead"))

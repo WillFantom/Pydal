@@ -29,12 +29,11 @@ class PydalCli(PydalUI):
             album = self.player.get_now().get_album()
             artist = self.player.get_now().get_artist()
             state = self.player.get_now().get_state()
-            progress = self.player.queue.get_now_progressbar()
             print("|> Track: " + track)
             print("|> Artist: " + artist)
             print("|> Album: " + album)
             print("|> State: " + state)
-            print("|> Progress <" + progress + ">")
+            print("|> Progress <" + ('#' * int(self.player.get_progress()/5)) + ('-' * (20 - int(self.player.get_progress()/5))) + ">")
         else:
             print("|> NOTHING")
         print()
