@@ -92,6 +92,7 @@ class Pydal:
     def next(self, retry=False):
         ''' Plays the next track in the queue or current radio '''
         self.media_player.stop()
+        self.now_playing.set_stopped()
         if self.queue.is_empty() == False:
             self.now_playing = NowPlaying(self.queue.get_next(), self.next)
         elif self.current_radio.is_empty() == False:
@@ -101,7 +102,10 @@ class Pydal:
 
         if self.now_playing.status() != NowPlayingStatus.none:
             print(self.now_playing.get_id())
-            self.media_player = vlc.MediaPlayer(str(str(self.settings.get("protocol")) + "://" + str(self.get_session().get_media_url(self.now_playing.get_id()))))
+            if self.settings.get("quality") == "LOSSLESS":
+                self.media_player = vlc.MediaPlayer(str(self.get_session().get_media_url(self.now_playing.get_id())))
+            else:
+                self.media_player = vlc.MediaPlayer(str("rtmp://" + self.get_session().get_media_url(self.now_playing.get_id())))
             self.now_playing.track_timer.start()
 
         self.play_pause(retry=retry)
@@ -140,16 +144,16 @@ class Pydal:
             i = int(result.split()[0]) - 1
             if i in range(0, int(self.settings.get("search_tracks"))):
                 self.queue.add(tracks[i])
-            elif i in range(int(self.settings.get("search_tracks")), int(self.settings.get("search_artists"))):
+            elif i in range(int(self.settings.get("search_tracks")), int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks"))):
                 top_tracks = self.session.get_artist_top_tracks(artists[i - int(self.settings.get("search_tracks"))].id)
-                if len(top_tracks < 5):
+                if len(top_tracks) < 5:
                     self.queue.add(top_tracks)
                 else:
                     self.queue.add(top_tracks[0:5])
-            elif i in range(int(self.settings.get("search_artists")), int(self.settings.get("search_albums"))):
+            elif i in range(int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")), int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")) + int(self.settings.get("search_albums"))):
                 album_tracks = self.session.get_album_tracks(albums[i - int(self.settings.get("search_tracks")) - int(self.settings.get("search_artists"))].id)
                 self.queue.add(album_tracks)
-            elif i in range(int(self.settings.get("search_albums")), int(self.settings.get("search_playlists"))):
+            elif i in range(int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")) + int(self.settings.get("search_albums")), int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")) + int(self.settings.get("search_albums")) + int(self.settings.get("search_playlists"))):
                 playlist_tracks = self.session.get_playlist_tracks(playlists[i - int(self.settings.get("search_tracks")) - int(self.settings.get("search_artists")) - int(self.settings.get("search_albums"))].id)
                 self.queue.add(playlist_tracks)
         if self.now_playing.status() == NowPlayingStatus.none or self.now_playing.status() == NowPlayingStatus.stopped:
@@ -276,6 +280,9 @@ class TrackTimer:
             self.timeout - (self.pauseTime - self.startTime),
             self.callback)
 
+    def stop(self):
+        self.timer.cancel()
+
 
 class NowPlaying:  
     def __init__(self, track, player_next):
@@ -289,7 +296,7 @@ class NowPlaying:
 
     def set_data(self):
         self.play_status = NowPlayingStatus.paused
-        self.track_timer = TrackTimer(self.track.duration, self.stop)
+        self.track_timer = TrackTimer(self.track.duration + 5, self.stop)
 
     def stop(self):
         self.play_status = NowPlayingStatus.stopped
@@ -302,6 +309,11 @@ class NowPlaying:
     def set_paused(self):
         self.play_status = NowPlayingStatus.paused
         self.track_timer.pause()
+    
+    def set_stopped(self):
+        self.play_status = NowPlayingStatus.stopped
+        if self.track_timer != None:
+            self.track_timer.stop()
 
     def status(self):
         return self.play_status
@@ -326,6 +338,9 @@ class Queue:
         self.current_position = -1
         self.tracks = []
 
+    def has_next(self):
+        a= 1
+
     def get_next(self, count=0):
         self.current_position = self.current_position + 1
         return self.tracks[self.current_position]
@@ -343,7 +358,10 @@ class Queue:
         return self.current_length - self.current_position - 1
 
     def add(self, tracks):
-        self.tracks.append(tracks)
+        if isinstance(tracks, list):
+            self.tracks = self.tracks + tracks
+        else:
+            self.tracks.append(tracks)
         self.current_length = len(self.tracks)
 
     def write(self):

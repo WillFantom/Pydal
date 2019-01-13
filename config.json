@@ -4,6 +4,5 @@
 	"search_artists": 2,
 	"search_albums": 2,
 	"search_playlists": 2,
-	"quality": "HIGH",
-	"protocol": "rtmp"
+	"quality": "LOSSLESS"
 }
