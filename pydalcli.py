@@ -32,9 +32,10 @@ class PydalCli(PydalUI):
             print("|> Album: " + album)
             print("|> State: " + state)
             print("|> Progress:")
-            print("   " + progress)
+            print(" \\" + progress)
         else:
             print("|> NOTHING")
+        print()
 
     def playing(self):
         self.current()

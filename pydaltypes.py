@@ -62,7 +62,6 @@ class Song:
                     time.sleep(0.1)
                     self.time_remaining -= 1
             self.end_call()
-        print(self.track.name + ": TIMER ENDED")
 
     def get_track(self):
         return str(self.track.name)

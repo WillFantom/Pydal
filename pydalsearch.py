@@ -52,9 +52,9 @@ class Search:
                 if self.field == "album":
                     tracks += self.session.get_album_tracks(self.results[int(item.split()[0]) - 1].id)
                 if self.field == "artist":
-                    tracks += self.session.get_artist_top_tracks(self.results[int(item.split()[0]) - 1].id)
+                    tracks += self.session.get_artist_top_tracks(self.results[int(item.split()[0]) - 1].id)[:10]
                 if self.field == "playlist":
-                    tracks += self.session.get_playlist_tracks(self.results[int(item.split()[0]) - 1].id)
+                    tracks += self.session.get_playlist_tracks(self.results[int(item.split()[0]) - 1].id)[:40]
         return tracks
 
 
