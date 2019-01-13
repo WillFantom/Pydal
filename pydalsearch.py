@@ -1,4 +1,4 @@
-import tidalapi as tdl
+from tidalapi import Session
 
 class Search:
     def __init__(self, ui, session, max_results, term="All Star", field="track"):
@@ -43,7 +43,7 @@ class Search:
         for result in self.results:
             formatted.append({"name" : str(idx) + " | " + result.name })
             idx += 1
-        selection = self.ui.search_prompt(self.field, formatted) #TODO
+        selection = self.ui.search_prompt(self.field, formatted)
         tracks = []
         for item in selection['results']:
             if self.field == "track":

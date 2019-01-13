@@ -2,5 +2,6 @@
 	"username": "w.fantom@lancs.ac.uk",
 	"max_results": 7,
 	"queue_lookahead": 7,
-	"quality": "LOSSLESS"
+	"quality": "LOSSLESS",
+	"crossfade": 2
 }

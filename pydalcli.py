@@ -2,10 +2,10 @@ from __future__ import print_function, unicode_literals
 from PyInquirer import style_from_dict, Token, prompt, Separator
 import getpass
 
-from pydal import PydalUI
+from pydalui import PydalUI
 from pydaltypes import Song
 
-class PlydalCli(PydalUI):
+class PydalCli(PydalUI):
     def __init__(self, player):
         self.player = player
         self.title = "||  PYDAL  ||  a TIDAL player for linux"
@@ -49,9 +49,6 @@ class PlydalCli(PydalUI):
     def uname_input(self):
         return str(input("|>> Enter your TIDAL username >> "))
 
-    def search(self, field, term):
-        self.player.search(field, term)
-
     def search_prompt(self, field, formatted_list):
         question = [
             {
@@ -61,7 +58,7 @@ class PlydalCli(PydalUI):
                 "choices": formatted_list
             }
         ]
-        return prompt(question)['results']
+        return prompt(question)
 
     def yesno_prompt(self, message):
         question = [
@@ -78,11 +75,43 @@ class PlydalCli(PydalUI):
     def exit(self):
         print("||>  EXITING PYDAL")
 
+    def help(self):
+        print("|> -- HELP")
+        print("|> play - plays the current track")
+        print("|> pause - pauses the current track")
+        print("|> next - skips to the next track in the queue")
+        print("|> previous - skips to the previous track in the queue")
+        print("|> current - shows what is currently playing")
+        print("|> search [field] [term] - searches for term with a field")
+        print("|> exit - quits Pydal")
+
     def run(self):
         while True:
-            command = ""
-            while command == "":
-                command = input("|>> ")
+            i = ""
+            while i == "":
+                i = input("|>> ")
+            command = i.split()[0].lower()
+            if command == "play":
+                self.player.play_pause()
+            elif command == "pause":
+                self.player.play_pause()
+            elif command == "next":
+                self.player.next()
+            elif command == "previous":
+                self.player.previous()
+            elif command == "current":
+                self.current()
+            elif command == "search":
+                if len(i.split()) < 3:
+                    self.help()
+                else:
+                    self.player.search(i.split()[1].lower(), i.split(' ', 2)[2])
+            elif command == "help":
+                self.help()
+            elif command == "exit":
+                self.player.exit()
+            else:
+                self.help()
 
 
 
@@ -102,7 +131,7 @@ class PlydalCli(PydalUI):
 
 
 
-class PydalCli(PydalUI):
+'''class PydalCli(PydalUI):
     def __init__(self, player):
         self.player = player
         a = 1
@@ -167,4 +196,4 @@ class PydalCli(PydalUI):
             "default": True,
         } ]
         response = prompt(question)
-        return response["yn"]
+        return response["yn"]'''

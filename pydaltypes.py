@@ -9,7 +9,7 @@ class SongState:
     stopped = "STOPPED"
 
 class Song:
-    def __init__(self, quality, url, end_call, error_print, track):
+    def __init__(self, quality, url, end_call, error_print, crossfade, track):
         self.track = track
         self.album = track.album
         self.artist = track.artist
@@ -22,7 +22,7 @@ class Song:
             self.media_protocol_ext = "rtmp://"
         self.media = vlc.MediaPlayer(self.media_protocol_ext + url)
 
-        self.time_remaining = track.duration * 10
+        self.time_remaining = (track.duration * 10) - crossfade
         self.end_call = end_call
         self.timer = threading.Thread(target=self._timer)
         self.timing = False
@@ -33,6 +33,7 @@ class Song:
             self.media.play()
             if self.timer.isAlive() == False:
                 self.timer_active = True
+                self.timing = True
                 self.timer.start()
             self.state = SongState.playing
         except:
@@ -42,6 +43,7 @@ class Song:
     def pause(self):
         try:
             self.media.pause()
+            self.timing = False
             self.state = SongState.paused
         except:
             self.error_print("Song " + self.track.name + " could not be paused", exit=True)
@@ -59,6 +61,7 @@ class Song:
                     time.sleep(0.1)
                     self.time_remaining -= 1
             self.end_call()
+        print(self.track.name + ": TIMER ENDED")
 
     def get_track(self):
         return str(self.track.name)
@@ -90,8 +93,10 @@ class Queue:
         return self.next[0:count]
 
     def set_next(self):
-        if self.has_next():
+        if self.now_playing != None:
             self.now_playing.stop()
+            self.previous.append(self.now_playing)
+        if self.has_next():
             self.now_playing = self.next.pop(0)
 
     def has_previous(self):
@@ -105,9 +110,14 @@ class Queue:
         return self.next[-count]
 
     def set_previous(self):
-        if self.has_previous():
-            self.now_playing.stop()
-            self.now_playing = self.previous.pop()
+        if self.now_playing != None:
+            if self.now_playing.get_state() == SongState.stopped:
+                self.now_playing.play()
+            else:
+                self.now_playing.stop()
+                self.next = [self.now_playing] + self.next
+            if self.has_previous():
+                self.now_playing = self.previous.pop()
 
     def add(self, list):
         self.next += list
