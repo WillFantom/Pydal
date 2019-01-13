@@ -115,7 +115,7 @@ class Pydal:
         else:
             self.cli.print_message("No Previous Track")
 
-    def search(self, term):
+    def search(self, term="All Star Smash Mouth"):
         ''' Searches TIDAL for tracks, artists, albums and playlist of a given term '''
         tracks = self.get_session().search("track", term).tracks[0:int(self.settings.get("search_tracks"))]
         artists = self.get_session().search("artist", term).artists[0:int(self.settings.get("search_artists"))]
