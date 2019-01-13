@@ -1,0 +1,3 @@
+[submodule "python-tidal"]
+	path = python-tidal
+	url = git@github.com:WillFantom/python-tidal.git
