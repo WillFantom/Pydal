@@ -197,13 +197,6 @@ class Settings:
         if self.file_data["quality"].upper() not in qualaties:
             valid = False
 
-        #Verify Protocol
-        protocols = ["rtmp"]
-        if "protocol" not in self.file_data:
-            valid = False
-        if self.file_data["protocol"].upper() not in protocols:
-            valid = False
-
         #Verify Search Max
         if "search_tracks" not in self.file_data:
             valid = False
