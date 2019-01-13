@@ -76,6 +76,10 @@ class Song:
     def get_state(self):
         return self.state
 
+    def get_progressbar(self):
+        percent = int(((self.track.duration - (self.time_remaining/10)) / self.track.duration) * 100)
+        return "|" + ("-" * int((percent/5))) + (" " * int((20-(percent/5)))) + "|"
+
 
 class Queue:
     def __init__(self):

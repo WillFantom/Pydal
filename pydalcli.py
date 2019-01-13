@@ -20,19 +20,21 @@ class PydalCli(PydalUI):
             exit()
 
     def current(self):
-        print("|> -- Now Playing --")
+        print(" -- Now Playing -- ")
         if self.player.get_now() != None:
             track = self.player.get_now().get_track()
             album = self.player.get_now().get_album()
             artist = self.player.get_now().get_artist()
             state = self.player.get_now().get_state()
+            progress = self.player.get_now().get_progressbar()
             print("|> Track: " + track)
             print("|> Artist: " + artist)
             print("|> Album: " + album)
             print("|> State: " + state)
+            print("|> Progress:")
+            print("   " + progress)
         else:
             print("|> NOTHING")
-        print("|> -----------------")
 
     def playing(self):
         self.current()

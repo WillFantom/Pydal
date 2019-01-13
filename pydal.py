@@ -1,5 +1,6 @@
 import tidalapi as tdl
 import json
+import sys
 
 from pydalcli import PydalCli
 from pydalweb import PydalWeb
@@ -95,9 +96,10 @@ class Pydal:
 
     def exit(self):
         self.queue.dump("data")
+        self.get_now().stop()
         self.session = None
         self.ui.exit()
-        exit(-1)
+        sys.exit()
 
 
 class Settings:
