@@ -1,230 +1,204 @@
 import tidalapi as tdl
-import threading
-import time
 import json
-import getpass
-import vlc
 
 from pydalcli import PydalCli
 from pydalweb import PydalWeb
+from pydaltypes import Song, SongState, Queue
+from pydalsearch import Search
+
+class PydalUI():
+    def alert(self, message):
+        raise NotImplementedError("Implement Me")
+
+    def error(self, message, exit=False):
+        raise NotImplementedError("Implement Me")
+
+    def current(self):
+        raise NotImplementedError("Implement Me")
+
+    def playing(self):
+        raise NotImplementedError("Implement Me")
+
+    def paused(self):
+        raise NotImplementedError("Implement Me")
+
+    def stopped(self):
+        raise NotImplementedError("Implement Me")
+
+    def pass_input(self):
+        raise NotImplementedError("Implement Me")
+
+    def uname_input(self):
+        raise NotImplementedError("Implement Me")
+
+    def search(self, field, term):
+        raise NotImplementedError("Implement Me")
+
+    def search_prompt(self, field, formatted_list):
+        raise NotImplementedError("Implement Me")
+
+    def yesno_prompt(self, message):
+        raise NotImplementedError("Implement Me")
+
+    def exit(self):
+        raise NotImplementedError("Implement Me")
+
+    def help(self):
+        raise NotImplementedError("Implement Me")
+
+    def run(self):
+        raise NotImplementedError("Implement Me")
 
 class Pydal:
     def __init__(self):
+        #Create UIs
         self.cli = PydalCli(self)
-        self.web = PydalWeb()
-        self.settings = Settings()
-        self.session = None
-        self.session = self.get_session()
-        self.media_player = vlc.MediaPlayer()
-        self.now_playing = NowPlaying(None, self.next)
+        self.web = PydalWeb(self)
+
+        #Set Default UI
+        self.ui = self.cli
+
+        #Get Settings from "config.json"
+        self.settings = Settings("config", self.ui.error)
+
+        #Create a Tidal Session
+        self.session = self.create_session()
+
+        #Create song list
         self.queue = Queue()
-        self.current_radio = Queue()
 
-        self.cli.run()
+        #Run Pydal UI loop
+        self.ui.run()
 
-    def get_settings(self):
-        ''' Returns the current settings object of the app '''
-        if self.settings.is_valid() == True:
-            return self.settings
+    def play_pause(self):
+        if self.queue.get_now() == None:
+            self.next()
         else:
-            self.cli.error("Invalid Settings", exit=False)
-            self.cli.error("Look at the GitHub repo for config example", exit=True)
+            if self.queue.get_now().get_state() == SongState.playing:
+                self.queue.get_now().pause()
+                self.ui.paused()
+            elif self.queue.get_now().get_state() == SongState.paused or self.queue.get_now().get_state() == SongState.stopped:
+                self.queue.get_now().play()
+                self.ui.playing()
 
-    def get_session(self, retry=False):
-        ''' Returns the current tidal session if a login check is successful '''
-        if self.session == None or self.session.check_login() == False:
-            if retry == True:
-                self.cli.error("Invalid Session", exit=True)
-            else:
-                self.session = self.create_session()
-                return self.get_session(retry=True)
+    def stop(self):
+        if self.queue.get_now() != None:
+            self.queue.get_now().stop()
+            self.ui.stopped()
+
+    def next(self):
+        if self.queue.has_next():
+            self.queue.set_next()
+            self.queue.get_now().play()
+            self.ui.playing()
         else:
-            return self.session
-
-    def get_now_playing(self, field):
-        ''' Returns the str {field} of the current track '''
-        fields = ["track", "artist", "album"]
-        if field.lower() not in fields:
-            self.cli.error("Invalid Field Requested from Now Playing", exit=True)
-        if self.now_playing == None:
-            return str("{null}")
-        else:
-            return str(self.now_playing.get(field.lower()))
-
-    def get_queue(self, count):
-        ''' Returns the next {count} items in the queue as str(track name) - str(track artist name) '''
-        if count > self.queue.remaining():
-            count = self.queue.remaining()
-        tracks = self.queue.get_next(count)
-        formatted = []
-        for track in tracks:
-            formatted.append(str(track.name) + " - " + str(track.artist.name))
-        return formatted
-
-    def create_session(self):
-        ''' Creates a Session '''
-        session_config = tdl.Config(self.settings.get("quality"))
-        username = self.settings.get_username(self.cli)
-        password = self.settings.get_password(self.cli)
-        session = tdl.Session(session_config)
-        session.login(username, password)
-        return session
-
-    def play_pause(self, retry=False):
-        ''' Starts or resumes if not playing. Pauses a playing song '''
-        if self.now_playing.status() == NowPlayingStatus.none or self.now_playing.status() == NowPlayingStatus.stopped:
-            if retry == True:
-                self.cli.print_message("No Track Avaliable to Play")
-            else:
-                self.next(retry=True)
-        elif self.now_playing.status() == NowPlayingStatus.playing:
-            self.media_player.pause()
-            self.now_playing.set_paused()
-            self.cli.print_message("Paused")
-        elif self.now_playing.status() == NowPlayingStatus.paused:
-            self.media_player.play()
-            self.now_playing.set_playing()
-            self.cli.print_message("Playing")
-        else:
-            self.cli.error("Invalid Now Playing Status Detected", exit=True)
-
-
-    def next(self, retry=False):
-        ''' Plays the next track in the queue or current radio '''
-        self.media_player.stop()
-        self.now_playing.set_stopped()
-        if self.queue.is_empty() == False:
-            self.now_playing = NowPlaying(self.queue.get_next(), self.next)
-        elif self.current_radio.is_empty() == False:
-            self.now_playing = NowPlaying(self.current_radio.get_next(), self.next)
-        else:
-            self.now_playing = NowPlaying(None, self.next)
-
-        if self.now_playing.status() != NowPlayingStatus.none:
-            print(self.now_playing.get_id())
-            if self.settings.get("quality") == "LOSSLESS":
-                self.media_player = vlc.MediaPlayer(str(self.get_session().get_media_url(self.now_playing.get_id())))
-            else:
-                self.media_player = vlc.MediaPlayer(str("rtmp://" + self.get_session().get_media_url(self.now_playing.get_id())))
-            self.now_playing.track_timer.start()
-
-        self.play_pause(retry=retry)
+            self.ui.alert("Queue Empty")
+            if self.queue.get_now() != None:
+                self.queue.get_now().stop()
 
     def previous(self):
-        ''' Plays the previous track if avaiable '''
         if self.queue.has_previous():
-            self.media_player.stop()
-            self.now_playing = NowPlaying(self.queue.get_previous(), self.next)
-            self.play_pause()
+            self.queue.set_previous()
+            self.queue.get_now().play()
         else:
-            self.cli.print_message("No Previous Track")
+            self.ui.alert("History Empty")
 
-    def search(self, term="All Star Smash Mouth"):
-        ''' Searches TIDAL for tracks, artists, albums and playlist of a given term '''
-        tracks = self.get_session().search("track", term).tracks[0:int(self.settings.get("search_tracks"))]
-        artists = self.get_session().search("artist", term).artists[0:int(self.settings.get("search_artists"))]
-        albums = self.get_session().search("album", term).albums[0:int(self.settings.get("search_albums"))]
-        playlists = self.get_session().search("playlist", term).playlists[0:int(self.settings.get("search_playlists"))]
-        idx = 1
-        formatted = []
-        for track in tracks:
-            formatted.append({"name" : str(idx) + " : track : " + str(track.name) + " : " + str(track.artist.name)})
-            idx = idx + 1
-        for artist in artists:
-            formatted.append({"name" : str(idx) + " : artist : " + str(artist.name) + " : (will add top 5 tracks to queue)"})
-            idx = idx + 1
-        for album in albums:
-            formatted.append({"name" : str(idx) + " : album : " + str(album.name) + " : " + str(album.artist.name)})
-            idx = idx + 1
-        for playlist in playlists:
-            formatted.append({"name" : str(idx) + " : playlist : " + str(playlist.name)})
-            idx = idx + 1
-        choice = self.cli.search_menu(formatted)
-        for result in choice['results']:
-            i = int(result.split()[0]) - 1
-            if i in range(0, int(self.settings.get("search_tracks"))):
-                self.queue.add(tracks[i])
-            elif i in range(int(self.settings.get("search_tracks")), int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks"))):
-                top_tracks = self.session.get_artist_top_tracks(artists[i - int(self.settings.get("search_tracks"))].id)
-                if len(top_tracks) < 5:
-                    self.queue.add(top_tracks)
-                else:
-                    self.queue.add(top_tracks[0:5])
-            elif i in range(int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")), int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")) + int(self.settings.get("search_albums"))):
-                album_tracks = self.session.get_album_tracks(albums[i - int(self.settings.get("search_tracks")) - int(self.settings.get("search_artists"))].id)
-                self.queue.add(album_tracks)
-            elif i in range(int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")) + int(self.settings.get("search_albums")), int(self.settings.get("search_artists")) + int(self.settings.get("search_tracks")) + int(self.settings.get("search_albums")) + int(self.settings.get("search_playlists"))):
-                playlist_tracks = self.session.get_playlist_tracks(playlists[i - int(self.settings.get("search_tracks")) - int(self.settings.get("search_artists")) - int(self.settings.get("search_albums"))].id)
-                self.queue.add(playlist_tracks)
-        if self.now_playing.status() == NowPlayingStatus.none or self.now_playing.status() == NowPlayingStatus.stopped:
-            self.play_pause()
+    def search(self, field, term):
+        search = Search(self.ui, self.session, self.settings.get("max_results"))
+        selection = search.get_selection()
+        to_add = []
+        for item in selection:
+            to_add.append(Song(self.settings.get("quality"), self.session.get_media.url(item.id), self.next, self.ui.error, item))
+        self.queue.add(to_add)
+        self.ui.alert("Added " + str(len(to_add)) + " Items to the Queue")
+        if self.queue.get_now() == None:
+            self.next()
 
-    def logout(self):
-        ''' Kills the current session '''
-        self.session = None
+    def create_session(self):
+        self.settings.validate()
+        session_config = tdl.Config(self.settings.get("quality"))
+        self.session = tdl.Session(session_config)
+        try:
+            self.session.login(self.settings.get_username(self.ui.uname_input, self.ui.yesno_prompt), self.settings.get_password(self.ui.pass_input, self.ui.yesno_prompt))
+        except:
+            self.ui.error("Error Creating Login Session", exit=True)
+        if self.session.check_login() == False:
+            self.ui.error("Invalid Login Credentials", exit=True)
+
+    def get_now(self):
+        return self.queue.get_now()
+
+    def get_queue(self):
+        return self.queue.get_next(self.settings.get("queue_lookahead"))
+
+    def get_history(self):
+        return self.queue.get_previous(self.settings.get("queue_lookahead"))
 
     def exit(self):
-        ''' Exits the app '''
-        self.queue.write()
-        self.logout()
-        self.cli.exit()
+        self.queue.dump("data")
+        self.session = None
+        self.ui.exit()
+        exit()
 
 
 class Settings:
-    def __init__(self):
-        self.file_name = "config.json"
-        self.file_data = self.read_settings()
-        self.username = None
-        self.password = None
+    def __init__(self, file_name, error_print):
+        self.file_name = file_name+".json"
+        self.error_print = error_print
+        self.file_data = self.read()
 
-    def read_settings(self):
+    def read(self, retry=False):
         try:
-            with open(self.file_name) as config_file:
+            with open(self.file_name, "r") as config_file:
                 return json.load(config_file)
         except:
-            return None
-            f = open(self.file_name, "r+")
-            f.close()
+            if retry == True:
+                self.error_print("Settings Not Readable", exit=True)
+            with open(self.file_name, "w+") as config_file:
+                data = {}
+                data["max_results"] = 7
+                data["queue_lookahead"] = 7
+                data["quality"] = "HIGH"
+            return self.read(retry=True)
 
-
-    def is_valid(self):
-        valid = True
-
-        #Verify Quality
+    def validate(self):
+        #Quality
         qualaties = ["LOW", "HIGH", "LOSSLESS"]
         if "quality" not in self.file_data:
-            valid = False
-        if self.file_data["quality"].upper() not in qualaties:
-            valid = False
+            self.error_print("Config does not specify quality", exit=True)
+        if self.file_data["quality"] not in qualaties:
+            self.error_print("Quality " + self.file_data["quality"] + " is not valid", exit=True)
 
-        #Verify Search Max
-        if "search_tracks" not in self.file_data:
-            valid = False
-        if "search_artists" not in self.file_data:
-            valid = False
-        if "search_albums" not in self.file_data:
-            valid = False
-        if "search_playlists" not in self.file_data:
-            valid = False
+        #Queue Lookahead
+        if "queue_lookahead" not in self.file_data:
+            self.error_print("Config does not specify queue_lookahead", exit=True)
+        try:
+            qlah = int(self.file_data["queue_lookahead"])
+            if qlah < 1 or qlah > 50:
+                raise Exception("Queue Lookahead not in Range")
+        except:
+            self.error_print("Queue Lookahead " + str(self.file_data["queue_lookahead"]) + " is not valid", exit=True)
 
-        return valid
+        #Max Search
+        if "max_results" not in self.file_data:
+            self.error_print("Config does not specify max_results", exit=True)
+        try:
+            qlah = int(self.file_data["max_results"])
+            if qlah < 1 or qlah > 50:
+                raise Exception("Max Search Results not in Range")
+        except:
+            self.error_print("Max Search Results " + str(self.file_data["max_results"]) + " is not valid", exit=True)
         
-    def get_username(self, cli):
+    def get_username(self, uname_input, yes_no):
         if "username" not in self.file_data:
-            username = cli.get_username()
-            store = cli.yes_no("Store Username")
-            if store == True:
-                self.write("username", username)
+            username = uname_input()
             return username
         else:
             return self.get("username")
 
-    def get_password(self, cli):
+    def get_password(self, pass_input, yes_no):
         if "password" not in self.file_data:
-            password = cli.get_password()
-            store = cli.yes_no("Store Password (in plaintext!)")
-            if store == True:
-                self.write("password", password)
+            password = pass_input()
             return password
         else:
             return self.get("password")
@@ -234,132 +208,5 @@ class Settings:
             return None
         else:
             return self.file_data[field]
-
-    def write(self, field, data):
-        if field not in self.file_data:
-            with open(self.file_name, "a") as f:
-                data = {str(field) : str(data)}
-                f.write(json.dumps(data))
-                f.close()
-        else: 
-            a = 1
-            # Implement Me
-
-
-class NowPlayingStatus:
-    none = "NONE"
-    playing = "PLAYING"
-    paused = "PAUSED"
-    stopped = "STOPPED"
-
-
-class TrackTimer:
-    def __init__(self, timeout, callback):
-        self.timeout = timeout
-        self.callback = callback
-        self.timer = threading.Timer(timeout, callback)
-        self.startTime = time.time()
-        self.pauseTime = 0
-
-    def start(self):
-        self.timer.start()
-
-    def pause(self):
-        self.timer.cancel()
-        self.pauseTime = time.time()
-
-    def resume(self):
-        self.timer = threading.Timer(
-            self.timeout - (self.pauseTime - self.startTime),
-            self.callback)
-
-    def stop(self):
-        self.timer.cancel()
-
-
-class NowPlaying:  
-    def __init__(self, track, player_next):
-        self.play_status = NowPlayingStatus.none
-        self.track = track
-        self.track_timer = None
-        self.stop_call = player_next
-
-        if self.track != None:
-            self.set_data()
-
-    def set_data(self):
-        self.play_status = NowPlayingStatus.paused
-        self.track_timer = TrackTimer(self.track.duration + 5, self.stop)
-
-    def stop(self):
-        self.play_status = NowPlayingStatus.stopped
-        self.stop_call()
-
-    def set_playing(self):
-        self.play_status = NowPlayingStatus.playing
-        self.track_timer.resume()
-
-    def set_paused(self):
-        self.play_status = NowPlayingStatus.paused
-        self.track_timer.pause()
-    
-    def set_stopped(self):
-        self.play_status = NowPlayingStatus.stopped
-        if self.track_timer != None:
-            self.track_timer.stop()
-
-    def status(self):
-        return self.play_status
-
-    def get(self, field):
-        if field.lower() == "track":
-            return str(self.track.name)
-        elif field.lower() == "artist":
-            return str(self.track.artist.name)
-        elif field.lower() == "album":
-            return str(self.track.album.name)
-        else:
-            exit("Sorry, I don't have a nice error message for this one :'(")
-
-    def get_id(self):
-        return self.track.id
-
-
-class Queue:
-    def __init__(self):
-        self.current_length = -1
-        self.current_position = -1
-        self.tracks = []
-
-    def has_next(self):
-        a= 1
-
-    def get_next(self, count=0):
-        self.current_position = self.current_position + 1
-        return self.tracks[self.current_position]
-
-    def get_previous(self):
-        self.current_position = self.current_position - 1
-        return self.tracks[self.current_position]
-
-    def is_empty(self):
-        if self.current_position >= self.current_length - 1:
-            return True
-        return False
-
-    def remaining(self):
-        return self.current_length - self.current_position - 1
-
-    def add(self, tracks):
-        if isinstance(tracks, list):
-            self.tracks = self.tracks + tracks
-        else:
-            self.tracks.append(tracks)
-        self.current_length = len(self.tracks)
-
-    def write(self):
-        a=1
-        #Implement Me
-
 
 pydal = Pydal()

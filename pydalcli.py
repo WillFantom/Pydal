@@ -2,7 +2,107 @@ from __future__ import print_function, unicode_literals
 from PyInquirer import style_from_dict, Token, prompt, Separator
 import getpass
 
-class PydalCli:
+from pydal import PydalUI
+from pydaltypes import Song
+
+class PlydalCli(PydalUI):
+    def __init__(self, player):
+        self.player = player
+        self.title = "||  PYDAL  ||  a TIDAL player for linux"
+        print(self.title)
+
+    def alert(self, message):
+        print("|> " + message + " <|")
+
+    def error(self, message, exit=False):
+        print("!> " + message + " <!")
+        if exit:
+            exit()
+
+    def current(self):
+        print("|> -- Now Playing --")
+        if self.player.get_now() != None:
+            track = self.player.get_now().get_track()
+            album = self.player.get_now().get_album()
+            artist = self.player.get_now().get_artist()
+            state = self.player.get_now().get_state()
+            print("|> Track: " + track)
+            print("|> Artist: " + artist)
+            print("|> Album: " + album)
+            print("|> State: " + state)
+        else:
+            print("|> NOTHING")
+        print("|> -----------------")
+
+    def playing(self):
+        self.current()
+
+    def paused(self):
+        self.current()
+
+    def stopped(self):
+        self.current()
+
+    def pass_input(self):
+        return str(getpass.getpass("|>> Enter your TIDAL password >> "))
+
+    def uname_input(self):
+        return str(input("|>> Enter your TIDAL username >> "))
+
+    def search(self, field, term):
+        self.player.search(field, term)
+
+    def search_prompt(self, field, formatted_list):
+        question = [
+            {
+                "type": "checkbox",
+                "message": " >> Select " + str(field) + "s >>",
+                "name": "results",
+                "choices": formatted_list
+            }
+        ]
+        return prompt(question)['results']
+
+    def yesno_prompt(self, message):
+        question = [
+            {
+                "type": "confirm",
+                "message": message,
+                "name": "yn",
+                "default": False,
+            } 
+        ]
+        response = prompt(question)
+        return response["yn"]
+
+    def exit(self):
+        print("||>  EXITING PYDAL")
+
+    def run(self):
+        while True:
+            command = ""
+            while command == "":
+                command = input("|>> ")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class PydalCli(PydalUI):
     def __init__(self, player):
         self.player = player
         a = 1
